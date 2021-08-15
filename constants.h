@@ -11,6 +11,7 @@ const char CONTENT_END[1]={0x03};
 const char CHUNK[1]={0x0d};
 const char CHUNK_RECEIVED[1]={0x0a};
 
-const int SERVICE_PORT= 44444;
+const int SERVICE_PORT= 44445;
+#define SERVICE_PORT_CHAR "44445"
 
 #endif

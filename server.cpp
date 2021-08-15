@@ -92,8 +92,7 @@ void* comThread(void* client){
     pthread_mutex_unlock(&lock);
 
     char mess[1024];
-
-    read(*conf, mess, 1024);
+    recv(*conf, mess, 1024, MSG_WAITALL);
 
     char *ptr;
     char c_len[8]={mess[0], mess[1], mess[2], mess[3], mess[4], mess[5], mess[6], mess[7]};
@@ -105,14 +104,14 @@ void* comThread(void* client){
     long* rp_length= (long*)&rp_len;
 
     char fileName[*fn_length+1];
-    memset(fileName,'\0', *fn_length);
+    memset(fileName,'\0', strlen(fileName));
     for(int i=0;i<*fn_length;i++)
         fileName[i]= mess[30+i];
 
     fileName[*fn_length]='\0';
 
-    char relativePath[*rp_length];
-    memset(relativePath, '\0', *rp_length);
+    char relativePath[*rp_length+1];
+    memset(relativePath, '\0', *rp_length+1);
     for(int i=0;i<*rp_length;i++)
         relativePath[i]= mess[32+*fn_length+i];
 
@@ -162,6 +161,7 @@ void* comThread(void* client){
         
     }
 
+    remove(f_name);
     FILE *f;
     f= fopen(f_name,"a");
     int n;
@@ -195,6 +195,8 @@ void* comThread(void* client){
         }
             
         int contentLength= chunk.getContentLength();
+        if(*content_length<CHUNK_SIZE+1024)
+            contentLength=*content_length;
         char finalChunk[contentLength];
         chunk.getContent(finalChunk);
 

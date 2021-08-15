@@ -1,8 +1,9 @@
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <strings.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
@@ -10,10 +11,10 @@
 
 #define SA struct sockaddr
 
-void* waitForInput(void* action);
+DWORD WINAPI waitForInput(LPVOID action);
 bool running= true;
 bool cancelation= false;
-pthread_mutex_t lock;
+CRITICAL_SECTION critical;
 
 long length=0;
 long fullOffset=0;
@@ -24,46 +25,62 @@ char* relativePath;
 
 int main(int argc, char** argv){
 
-    pthread_mutex_lock(&lock);
+    WSADATA wsadata;
+    InitializeCriticalSectionAndSpinCount(&critical, 0x00000400);
+
+    EnterCriticalSection(&critical);
     localPath= argv[2];
     fileName= argv[3];
     relativePath= argv[4];
-    pthread_mutex_unlock(&lock);
+    LeaveCriticalSection(&critical);
 
-    pthread_t t;
-    pthread_create(&t, NULL, waitForInput, NULL);
+    HANDLE t;
+    DWORD t_id;
+    t= CreateThread(NULL, 0, waitForInput, NULL, 0, &t_id);
 
-    int socket_id;
-    struct sockaddr_in server_address;
+    SOCKET socket_id;
+    SOCKADDR_IN server_address;
     u_char buff[CHUNK_SIZE];
     int hc_size= 200 * CHUNK_SIZE;
     u_char* hugeBuff=(u_char*)malloc(hc_size*sizeof(u_char));
 
-    if((socket_id = socket(AF_INET, SOCK_STREAM, 0))<0)
+    int iResult = WSAStartup(MAKEWORD(2,2), &wsadata);
+    if (iResult != 0) {
+        printf("WSAStartup failed with error: %d\n", iResult);
+        return 1;
+    }
+
+    ZeroMemory(&server_address, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(SERVICE_PORT);
+    server_address.sin_addr.s_addr= inet_addr(argv[1]);
+    
+    if((socket_id = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))<0){
         printf("Cannot create socket...\n");
-
-    bzero(&server_address, sizeof(server_address));
-    server_address.sin_family= AF_INET;
-    server_address.sin_port= htons(SERVICE_PORT);
-    server_address.sin_addr.s_addr = inet_addr(argv[1]);
-
-    if(connect(socket_id, (SA*)&server_address, sizeof(server_address)) != 0)
-        printf("Cannot connect...\n");
+        WSACleanup();
+        return 1;
+    }
+    
+    iResult = connect(socket_id, (SA*)&server_address, sizeof(server_address));
+    if (iResult == SOCKET_ERROR) {
+        closesocket(socket_id);
+        socket_id = INVALID_SOCKET;
+        WSACleanup();
+        return 1;
+    }
 
     FILE *f;
 
-    pthread_mutex_lock(&lock);
+    EnterCriticalSection(&critical);
     f= fopen(localPath,"r");
     fseek(f,0,SEEK_END);
     length= ftell(f);
-    pthread_mutex_unlock(&lock);
-
     fseek(f, 0,SEEK_SET);
     fclose(f);
 
-    u_char mess[1024];
+    char mess[1024];
+    memset(mess, '\0', 1024);
 
-    pthread_mutex_lock(&lock);
     long fn_len= strlen(fileName);
     long rp_len= strlen(relativePath);
     char* v1= (char*)&length;
@@ -71,21 +88,30 @@ int main(int argc, char** argv){
     char* v2= (char*)&fn_len;
     char* v3= (char*)&rp_len;
     
-    for(int i=0;i<8;i++)
+    for(int i=0;i<8;i++){
+        if(v1[i]=='\0')
+            break;
         mess[i]=v1[i];
-
+    }
+    
     mess[8]=0x02;
     mess[9]=0x02;
 
-    for(int i=0;i<8;i++)
+    for(int i=0;i<8;i++){
+        if(v2[i]=='\0')
+            break;
         mess[i+10]=v2[i];
-
+    }
+        
     mess[18]=0x02;
     mess[19]=0x02;
 
-    for(int i=0;i<8;i++)
+    for(int i=0;i<8;i++){
+        if(v3[i]=='\0')
+            break;
         mess[i+20]=v3[i];
-
+    }
+    
     mess[28]=0x02;
     mess[29]=0x02;
 
@@ -98,7 +124,7 @@ int main(int argc, char** argv){
     for(int i=0;i<rp_len;i++)
         mess[i+32+fn_len]=relativePath[i];
 
-    write(socket_id, mess, 1024);
+    send(socket_id, mess, 1024, 0);
 
     int order=0;
     int cur;
@@ -111,10 +137,10 @@ int main(int argc, char** argv){
     if(s_len > length)
         s_len= length;
     
-    f= fopen(localPath,"r");
-    pthread_mutex_unlock(&lock);
+    f= fopen(localPath,"rb");
+    LeaveCriticalSection(&critical);
 
-    while((cur = fread(hugeBuff, s_len, sizeof(char),f) >0)){
+    while((cur = fread(hugeBuff, sizeof(char), s_len, f) >0)){
 
         int chunk_num= s_len / CHUNK_SIZE;
         if(s_len % CHUNK_SIZE>0)
@@ -136,7 +162,7 @@ int main(int argc, char** argv){
             char pack[CHUNK_SIZE+1024];
             chunk.getBytes(pack);
 
-            int writen= write(socket_id, pack, CHUNK_SIZE+1024);
+            send(socket_id, pack, CHUNK_SIZE+1024, 0);
             ll-=r;
 
             char response[12];
@@ -167,7 +193,7 @@ int main(int argc, char** argv){
 
         }
 
-        pthread_mutex_lock(&lock);
+        EnterCriticalSection(&critical);
         fullOffset+= offset;
 
         if(length-fullOffset >= hc_size)
@@ -175,23 +201,24 @@ int main(int argc, char** argv){
         else
             s_len= length-fullOffset;
 
-        pthread_mutex_unlock(&lock);
+        LeaveCriticalSection(&critical);
 
         memset(hugeBuff, '\0', hc_size);
     }
 
     end:
     running= false;
-    pthread_cancel(t);
+    CloseHandle(t);
     free(hugeBuff);
     fclose(f);
-    close(socket_id);
-    pthread_exit(NULL);
+    WSACleanup();
+    closesocket(socket_id);
+    DeleteCriticalSection(&critical);
 
     return 0;
 }
 
-void* waitForInput(void* action){
+DWORD WINAPI waitForInput(LPVOID action){
 
     char bb[256];
     memset(bb, '\0', 256);
@@ -201,16 +228,16 @@ void* waitForInput(void* action){
         strcat(bb, "\0");
 
         if(strcmp(bb,"read")==0){
-            pthread_mutex_lock(&lock);
+            EnterCriticalSection(&critical);
             printf("%s\t%ld of %ld\n", localPath, fullOffset, length);
-            pthread_mutex_unlock(&lock);
+            LeaveCriticalSection(&critical);
         }else if(strcmp(bb, "cancel")==0){
-            pthread_mutex_lock(&lock);
+            EnterCriticalSection(&critical);
             cancelation= true;
-            pthread_mutex_unlock(&lock);
+            LeaveCriticalSection(&critical);
         }
 
     }
 
-    pthread_exit(NULL);
+    _endthread();
 }
