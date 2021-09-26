@@ -153,6 +153,27 @@ DWORD WINAPI comThread(LPVOID ptr1){
     long* fn_length= (long*)&fn_len;
     long* rp_length= (long*)&rp_len;
 
+if(*content_length==0 || *fn_len==0 || rp_len==0){
+
+        memset(buff, '\0', CHUNK_SIZE + 1024);
+    
+        int e=-1;
+        EnterCriticalSection(&critical);
+        printf("%s\t%s\tcommunication broken\n", r->relativePath, r->fileName);
+        for(int i=0;i<clients.size();i++)
+            if(clients[i]->socket== *conf)
+                e= i;
+
+        LeaveCriticalSection(&critical);
+
+        if(e!=-1)
+            clients.erase(clients.begin()+e);
+
+        close(*conf);
+        free(r);
+        _endthread();
+    }
+
     char fileName[*fn_length+1];
     memset(fileName,'\0', *fn_length);
     for(int i=0;i<*fn_length;i++)

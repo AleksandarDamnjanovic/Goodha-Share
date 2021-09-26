@@ -4,13 +4,14 @@
 
 This is command line tool, for file transferring over wifi or internet. It's built in C/++(c with minor c++ support). It is fast, easy to use and simple. Being around 2k lines of code in size, makes it very easily to change according to your needs.
 
-It is built for windows and for linux.
+It is built for windows and for linux. Soon the version for android is going to be published.
 
-This tool has two binaries. One for receiver(server.bin) and one for sender(client.bin). When you start it, receiver runs continuously until you type `exit` in terminal. Client runs until file that you are sending is not sent completely and confirmation is received.
+This tool has three binaries. One for receiver(server.bin) and one for sender(client.bin). Third one is detector with the purpose to find other devices on the local network running the same service. When you start it, receiver runs continuously until you type `exit` in terminal. Client runs until file that you are sending is not sent completely and confirmation is received.
 
 Godha Share is built to be used within wrapper for content transfer functionality for some other app, but it could be used as standalone application.
 
 Communication port is set to be 44445.
+Detection port is set to be 44446
 
 ##Arguments
 
@@ -84,18 +85,13 @@ As you can see, I have set that file on the target machine will be named differe
 
 + `cancel` will break connection and exit the app
 
+###Detector arguments
+
+Have none.
+
 #How to compile?
 
 By using makefile
 
-`make build_linux` or `make build_windows`
-
-or by calling compiler yourself
-
-for linux
-`g++ -g server.cpp chunk.cpp constants.h -o server.bin -lpthread`
-`g++ -g client.cpp chunk.cpp constants.h -o client.bin -lpthread`
-
-for windows
-`g++ -g server_win.cpp chunk_win.cpp constants.h -o server.exe -lpthread -lws2_32`
-`g++ -g client_win.cpp chunk_win.cpp constants.h -o client.exe -lpthread -lws2_32`
+`make build_linux` , `make build_windows` or withoud any debugger stuff you can call
+`make build_linux_final`

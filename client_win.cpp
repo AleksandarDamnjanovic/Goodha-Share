@@ -160,10 +160,10 @@ int main(int argc, char** argv){
             }
 
             char pack[CHUNK_SIZE+1024];
+            memset(pack, '\0', CHUNK_SIZE+1024);
             chunk.getBytes(pack);
 
             send(socket_id, pack, CHUNK_SIZE+1024, 0);
-            ll-=r;
 
             char response[12];
             recv(socket_id, response, 12, MSG_WAITALL);
@@ -186,6 +186,11 @@ int main(int argc, char** argv){
             suma+= r;
             order+= 1;
 
+            if(ll>r)
+                ll-=r;
+            else
+                ll=0;
+
             if(ll <= CHUNK_SIZE)
                 r=ll;
             else
@@ -200,6 +205,9 @@ int main(int argc, char** argv){
             s_len= hc_size;
         else
             s_len= length-fullOffset;
+
+        if(s_len<0)
+            s_len=0; 
 
         LeaveCriticalSection(&critical);
 

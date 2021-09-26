@@ -9,7 +9,7 @@ class Chunk{
 
     private:
         char chunk[CHUNK_SIZE+1024];
-        char recPack[CHUNK_SIZE+1024];
+        char* recPack;
         char recChunk[CHUNK_SIZE];
         void addPaddingStart();
         void addLimitator(int offset, const char type[]);
@@ -25,7 +25,8 @@ class Chunk{
 
     public:
         Chunk(u_char (&content)[CHUNK_SIZE], char fileName[], long size, int order);
-        Chunk(char (&content)[CHUNK_SIZE+1024]);
+        Chunk(char* content, int length);
+        void clear();
         void getBytes(char* target);
         int getContentLength();
         void getContent(char *content);

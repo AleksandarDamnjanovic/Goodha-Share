@@ -111,7 +111,7 @@ int main(int argc, char** argv){
     if(s_len > length)
         s_len= length;
     
-    f= fopen(localPath,"r");
+    f= fopen(localPath,"rb");
     pthread_mutex_unlock(&lock);
 
     while((cur = fread(hugeBuff, s_len, sizeof(char),f) >0)){
@@ -125,7 +125,7 @@ int main(int argc, char** argv){
             memset(buff, '\0', CHUNK_SIZE);
             memcpy(buff,hugeBuff+offset, (s_len-offset>CHUNK_SIZE?CHUNK_SIZE:s_len-offset));
             offset+=CHUNK_SIZE;
-
+            
             start:Chunk chunk(buff, (char*)"name", r, order);
 
             if(cancelation){
@@ -134,10 +134,10 @@ int main(int argc, char** argv){
             }
 
             char pack[CHUNK_SIZE+1024];
+            memset(pack, '\0', CHUNK_SIZE+1024);
             chunk.getBytes(pack);
 
             int writen= write(socket_id, pack, CHUNK_SIZE+1024);
-            ll-=r;
 
             char response[12];
             recv(socket_id, response, 12, MSG_WAITALL);
@@ -160,6 +160,11 @@ int main(int argc, char** argv){
             suma+= r;
             order+= 1;
 
+            if(ll>r)
+                ll-=r;
+            else
+                ll=0;
+
             if(ll <= CHUNK_SIZE)
                 r=ll;
             else
@@ -174,6 +179,9 @@ int main(int argc, char** argv){
             s_len= hc_size;
         else
             s_len= length-fullOffset;
+
+        if(s_len<0)
+            s_len=0;
 
         pthread_mutex_unlock(&lock);
 

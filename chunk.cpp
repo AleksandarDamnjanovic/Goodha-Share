@@ -5,12 +5,20 @@
 #include "chunk.hpp"
 #include "constants.h"
 
-Chunk::Chunk(char (&content)[CHUNK_SIZE+1024]){
-    for(int i=0;i<CHUNK_SIZE+1024;i++)
-        recPack[i]= content[i];
+Chunk::Chunk(char* content, int length){
+    recPack= (char*)malloc(length);
+    memset(recPack, '\0', length);
+    for(int i=0;i<length;i++)
+        *(recPack+i)= *(content+i);
+}
+
+void Chunk::clear(){
+    free(recPack);
 }
 
 Chunk::Chunk(u_char (&content)[CHUNK_SIZE], char fileName[], long size, int order){
+    memset(chunk, '\0', CHUNK_SIZE+1024);
+
     int f_name_size= strlen(fileName);
     int offset= 0;
 

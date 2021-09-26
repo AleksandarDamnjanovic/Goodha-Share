@@ -103,12 +103,36 @@ void* comThread(void* client){
     long* fn_length= (long*)&fn_len;
     long* rp_length= (long*)&rp_len;
 
+    if(*content_length==0 || *fn_len==0 || rp_len==0){
+
+        memset(buff, '\0', CHUNK_SIZE + 1024);
+    
+        int e=-1;
+        pthread_mutex_lock(&lock);
+        printf("%s\t%s\tcommunication broken\n", r->relativePath, r->fileName);
+        for(int i=0;i<clients.size();i++)
+            if(clients[i]->socket== *conf)
+                e= i;
+
+        pthread_mutex_unlock(&lock);
+
+        if(e!=-1)
+            clients.erase(clients.begin()+e);
+
+        close(*conf);
+        free(r);
+        pthread_exit(NULL);
+    }
+        
     char fileName[*fn_length+1];
     memset(fileName,'\0', strlen(fileName));
     for(int i=0;i<*fn_length;i++)
         fileName[i]= mess[30+i];
 
     fileName[*fn_length]='\0';
+
+    if(fileName[strlen(fileName)-1]=='/' || fileName[strlen(fileName)-1]=='\\')
+        fileName[strlen(fileName)-1]='\0';
 
     char relativePath[*rp_length+1];
     memset(relativePath, '\0', *rp_length+1);
@@ -163,7 +187,7 @@ void* comThread(void* client){
 
     remove(f_name);
     FILE *f;
-    f= fopen(f_name,"a");
+    f= fopen(f_name,"ab");
     int n;
     int suma=0;
     long size= CHUNK_SIZE+1024;
@@ -178,9 +202,9 @@ void* comThread(void* client){
     order=0;
     memset(buff,'\0',CHUNK_SIZE+1024);
     
-    while((n= recv(*conf, buff, size, MSG_WAITALL))>0){
+    while((n= recv(*conf, buff, CHUNK_SIZE+1024, MSG_WAITALL))>0){
 
-        Chunk chunk(buff);
+        Chunk chunk(buff, CHUNK_SIZE+1024);
 
         if(buff[0]!=0x01 && buff[1]!=0x02){
             resend(conf, order_num);
@@ -219,6 +243,7 @@ void* comThread(void* client){
         if(*content_length<=suma)
             goto end;
 
+        chunk.clear();
     }
 
     end:

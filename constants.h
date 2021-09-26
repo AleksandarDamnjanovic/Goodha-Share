@@ -13,5 +13,7 @@ const char CHUNK_RECEIVED[1]={0x0a};
 
 const int SERVICE_PORT= 44445;
 #define SERVICE_PORT_CHAR "44445"
+const int DETECTION_PORT= 44446;
+#define DETECTION_PORT_CHAR "44446"
 
 #endif
