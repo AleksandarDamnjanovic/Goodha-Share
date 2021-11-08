@@ -148,12 +148,12 @@ void* comThread(void* client){
     if(r_path!=0)
         r_path+=2;
     
-    char f_name[(r_path==NULL?1:strlen(r_path)*sizeof(char))
+    char f_name[(r_path==NULL || *r_path=='/' ?1:strlen(r_path)*sizeof(char))
     +strlen(r->relativePath)*sizeof(char)
     +strlen(r->fileName)*sizeof(char)];
 
     memset(f_name,'\0',strlen(f_name)*sizeof(char));
-    strcpy(f_name, r_path==NULL?".":r_path);
+    strcpy(f_name, r_path==NULL || *r_path=='/'?".":r_path);
     strcat(f_name, r->relativePath);
     strcat(f_name, r->fileName);
     pthread_mutex_unlock(&lock);
@@ -188,6 +188,27 @@ void* comThread(void* client){
     remove(f_name);
     FILE *f;
     f= fopen(f_name,"ab");
+
+    if(f==NULL){
+        memset(buff, '\0', 1024);
+    
+    int e=-1;
+    pthread_mutex_lock(&lock);
+    printf("%s\t%s\ttransfer completed\n", r->relativePath, r->fileName);
+    for(int i=0;i<clients.size();i++)
+        if(clients[i]->socket== *conf)
+            e= i;
+
+    pthread_mutex_unlock(&lock);
+
+    if(e!=-1)
+        clients.erase(clients.begin()+e);
+
+    close(*conf);
+    free(r);
+    pthread_exit(NULL);
+    }
+        
     int n;
     int suma=0;
     long size= CHUNK_SIZE+1024;
@@ -223,6 +244,9 @@ void* comThread(void* client){
             contentLength=*content_length;
         char finalChunk[contentLength];
         chunk.getContent(finalChunk);
+
+        if(content_length==0 || f==0)
+            printf("here\n");
 
         int sent= fwrite(finalChunk, contentLength, sizeof(char), f);
         suma+=contentLength;
