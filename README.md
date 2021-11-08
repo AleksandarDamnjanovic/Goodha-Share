@@ -1,6 +1,6 @@
-#Goodha Share
+# Goodha Share
 
-##Generals
+## Generals
 
 This is command line tool, for file transferring over wifi or internet. It's built in C/++(c with minor c++ support). It is fast, easy to use and simple. Being around 2k lines of code in size, makes it very easily to change according to your needs.
 
@@ -13,9 +13,9 @@ Godha Share is built to be used within wrapper for content transfer functionalit
 Communication port is set to be 44445.
 Detection port is set to be 44446
 
-##Arguments
+## Arguments
 
-###Receiver arguments
+### Receiver arguments
 
 Receiver accepts two kind of arguments:
     
@@ -46,7 +46,7 @@ Use arguments like ./server.bin -fmyFile.txt -r./ This means that address list i
 
 If you choose not to use arguments when you start receiver instance, everyone is going to be able to send files to your mashine, and local directory path is going to be used as storage place.
 
-###Sender arguments
+### Sender arguments
 
 Arguments for sender are not arranged with keys. They have to be entered in particular order. All of arguments are mandatory.
 
@@ -61,9 +61,9 @@ example:
 
 As you can see, I have set that file on the target machine will be named differently than on sender machine. At the end I have typed / that means that my file is going to be stored in the root document that is set as relative path on receiving machine. If I type /new/new/ as the last argument, for example, my file is going to be stored in "receiver relative path"/new/new directory. If such directory doesn't exist on the target mashine, receiver is going to create it.
 
-##Runtime arguments
+## Runtime arguments
 
-###Receiver arguments
+### Receiver arguments
 
 + `read` prints sender ip address, relative path, file name, transferred amount, and file size
 
@@ -79,17 +79,17 @@ As you can see, I have set that file on the target machine will be named differe
 
 + `exit` will quit the application
 
-###Sender arguments
+### Sender arguments
 
 + `read` will print original file path, amound send and file size
 
 + `cancel` will break connection and exit the app
 
-###Detector arguments
+### Detector arguments
 
 Have none.
 
-#How to compile?
+# How to compile?
 
 By using makefile
 
